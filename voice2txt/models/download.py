@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import shutil
 from contextlib import contextmanager
 from typing import Dict, List, Optional
 
@@ -178,22 +177,21 @@ def brief_local_path(settings: Settings) -> str:
     return os.path.join(base, "brief", fname)
 
 
-def _merge_parts(part_paths: List[str], target: str) -> None:
-    """把按序排列的 GGUF 分片字节拼接为单个文件（等价于 gguf-split --merge）。
+# 旧版字节拼接合并会生成无效单文件（GGUF 分片各自带完整头，llama.cpp 报
+# "invalid split file name"）。故 7B 这类分片模型保留原始分片名，加载器直接
+# 指向首个分片，llama-cpp 自动读取同目录的兄弟分片。不再做合并。
+_STALE_MERGED = "qwen2.5-7b-instruct-q4_k_m.gguf"  # 上一版误合并产物，setup 时清理
 
-    仅做流式拷贝，避免把数 GB 模型读进内存；合并后校验总大小，防止半成品。
-    """
-    total = 0
-    with open(target, "wb") as out:
-        for p in part_paths:
-            size = os.path.getsize(p)
-            if size == 0:
-                raise IOError(f"分片为空，合并中止：{p}")
-            with open(p, "rb") as f:
-                shutil.copyfileobj(f, out, length=16 * 1024 * 1024)
-            total += size
-    if os.path.getsize(target) != total:
-        raise IOError(f"合并后大小不符：期望 {total}，实际 {os.path.getsize(target)}")
+
+def _cleanup_stale_merged(local_dir: str) -> None:
+    """删除上一版字节拼接生成的无效单文件（若存在），避免占用空间与混淆。"""
+    stale = os.path.join(local_dir, _STALE_MERGED)
+    if os.path.isfile(stale):
+        try:
+            os.remove(stale)
+            print(f"[setup] 已清理旧版合并产物（无效单文件）：{_STALE_MERGED}")
+        except OSError:
+            pass
 
 
 def _download_brief(settings: Settings) -> None:
@@ -201,8 +199,10 @@ def _download_brief(settings: Settings) -> None:
 
     - 仅拉取推理必需的权重文件（供应链安全：不拉取仓库内其它文件）。
     - 钉死到可验证 commit（见 models/registry.py MODEL_PINS）。
-    - 7B 的 Q4_K_M 在上游以 2 个分片发布（见 pin 的 ``parts`` 字段）：本函数先把各分片
-      下载到本地，再合并为单个 ``file``（llama-cpp-python 直接加载单文件最稳），合并后清理分片。
+    - 7B 的 Q4_K_M 在上游以 2 个分片发布（见 pin 的 ``parts`` 字段）：本函数把各分片
+      下载到本地并保留原始分片名，加载器指向首个分片（llama-cpp 自动读取兄弟分片）。
+      **不做字节拼接合并**——GGUF 分片各自带完整头，拼接会得到无效单文件
+      （llama.cpp 报 "invalid split file name"）。``part_sizes`` 用于校验分片完整性。
     - 3B 等为单文件（无 ``parts``），直接 hf_hub_download 到 ``file``。
     - HuggingFace 主站不可达时自动改走国内镜像 hf-mirror.com 并关闭 Xet。
     - 镜像环境变量用上下文管理器作用域限制，避免污染全局进程环境。
@@ -212,28 +212,9 @@ def _download_brief(settings: Settings) -> None:
     pin = brief_pin(settings)
     repo = pin["repo"]
     revision = pin["revision"]
-    fname = pin["file"]
     parts = pin.get("parts")  # 分片列表（7B）；3B 等单文件无此键
     local_dir = os.path.dirname(brief_local_path(settings))
     os.makedirs(local_dir, exist_ok=True)
-    target = os.path.join(local_dir, fname)
-
-    # 离线复用：单文件（3B）需体量正常；分片情形需已完成合并（单文件在且分片已清理）。
-    if os.path.isfile(target):
-        if parts:
-            if not any(os.path.isfile(os.path.join(local_dir, p)) for p in parts):
-                print(f"[setup] 纪要模型已缓存于 {target}，跳过下载（离线可用）")
-                return
-            # 上次合并被中断（单文件与分片俱在）→ 丢弃半成品，重新下载/合并
-            try:
-                os.remove(target)
-            except OSError:
-                pass
-        else:
-            if os.path.getsize(target) > 1_000_000_000:
-                print(f"[setup] 纪要模型已缓存于 {target}，跳过下载（离线可用）")
-                return
-            # 单文件过小视为损坏，重新下载
 
     attempts = [
         ("HuggingFace 主站", {}),
@@ -246,44 +227,52 @@ def _download_brief(settings: Settings) -> None:
     last_err: Optional[Exception] = None
 
     if parts:
-        # ---- 分片情形（7B）----
+        # ---- 分片情形（7B）：保留分片，加载器指向首个分片 ----
         part_paths = [os.path.join(local_dir, p) for p in parts]
-        part_ready = lambda p: os.path.isfile(p) and os.path.getsize(p) > 10_000_000
-        if all(part_ready(p) for p in part_paths):
-            print(f"[setup] 分片已存在，跳过下载，直接合并：{fname}")
-        else:
-            for label, env in attempts:
-                try:
-                    with _env_override(env):
-                        for p in parts:
-                            dst = os.path.join(local_dir, p)
-                            if part_ready(dst):
-                                print(f"[setup] 分片已存在，复用：{p}")
-                                continue
-                            if os.path.exists(dst):
-                                os.remove(dst)  # 清掉不完整分片，强制重拉
-                            print(f"[setup] 下载纪要分片 {p} via {label} -> {local_dir}")
-                            hf_hub_download(repo_id=repo, filename=p, revision=revision, local_dir=local_dir)
-                    break  # 全部分片下载成功
-                except Exception as e:  # 该源失败，尝试下一种
-                    last_err = e
-                    print(f"[warn] 纪要分片经 {label} 下载失败：{e}")
-            else:
-                print(f"[warn] 纪要模型下载失败（已跳过，可稍后用 "
-                      f"`voice2txt setup --engine brief` 重试）: {last_err}")
-                return
-        # 合并分片 → 单文件，并校验
-        _merge_parts(part_paths, target)
-        # 合并成功后删除分片，释放空间（约半个模型体积）
-        for p in part_paths:
+        part_sizes = pin.get("part_sizes")  # 与 parts 同序的预期字节数
+
+        def _part_ok(i: int) -> bool:
+            if not os.path.isfile(part_paths[i]):
+                return False
+            if part_sizes is not None:
+                return os.path.getsize(part_paths[i]) == part_sizes[i]
+            return os.path.getsize(part_paths[i]) > 10_000_000
+
+        if all(_part_ok(i) for i in range(len(part_paths))):
+            print(f"[setup] 纪要分片已齐（{len(part_paths)} 片），跳过下载（离线可用）")
+            _cleanup_stale_merged(local_dir)
+            return
+        for label, env in attempts:
             try:
-                os.remove(p)
-            except OSError:
-                pass
-        print(f"[setup]   OK: 纪要模型已合并缓存于 {target}（revision={revision}）")
+                with _env_override(env):
+                    for i, p in enumerate(parts):
+                        dst = part_paths[i]
+                        if _part_ok(i):
+                            print(f"[setup] 分片已完整，复用：{p}")
+                            continue
+                        if os.path.exists(dst):
+                            os.remove(dst)  # 清掉不完整分片，强制重拉
+                        print(f"[setup] 下载纪要分片 {p} via {label} -> {local_dir}")
+                        hf_hub_download(repo_id=repo, filename=p, revision=revision, local_dir=local_dir)
+                break  # 全部分片下载成功
+            except Exception as e:  # 该源失败，尝试下一种
+                last_err = e
+                print(f"[warn] 纪要分片经 {label} 下载失败：{e}")
+        else:
+            print(f"[warn] 纪要模型下载失败（已跳过，可稍后用 "
+                  f"`voice2txt setup --engine brief` 重试）: {last_err}")
+            return
+        _cleanup_stale_merged(local_dir)
+        print(f"[setup]   OK: 纪要分片已缓存于 {local_dir}（revision={revision}）；"
+              f"加载时指向首个分片，llama-cpp 自动读取兄弟分片")
         return
 
     # ---- 单文件情形（3B 等）----
+    fname = pin["file"]
+    target = os.path.join(local_dir, fname)
+    if os.path.isfile(target) and os.path.getsize(target) > 1_000_000_000:
+        print(f"[setup] 纪要模型已缓存于 {target}，跳过下载（离线可用）")
+        return
     for label, env in attempts:
         try:
             with _env_override(env):

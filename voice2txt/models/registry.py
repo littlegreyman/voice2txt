@@ -65,15 +65,19 @@ MODEL_PINS: Dict[str, Dict[str, object]] = {
     },
     # 7B 为纪要比默认模型：质量明显优于 3B，RTX 4060 8GB 可显存卸载。
     # 已钉到可验证 commit（2024-09-20，sha 经 hf-mirror API 取得）；上游把 Q4_K_M
-    # 以 2 个分片发布，故 setup 阶段会先下载分片再合并为单个 file（见 download._download_brief）。
+    # 以 2 个分片发布。GGUF 分片各自带完整头，不能简单字节拼接成单文件
+    # （会触发 llama.cpp "invalid split file name"），故下载器保留原始分片名、
+    # 加载器指向首个分片（llama-cpp 自动读取同目录兄弟分片）。part_sizes 用于校验分片完整性。
     "qwen2.5-7b-brief": {
         "repo": "Qwen/Qwen2.5-7B-Instruct-GGUF",
         "revision": "bb5d59e06d9551d752d08b292a50eb208b07ab1f",
-        "file": "qwen2.5-7b-instruct-q4_k_m.gguf",
+        # file 指向首个分片；llama-cpp 会按 -NNNNN-of-MMMMM 命名自动加载兄弟分片
+        "file": "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
         "parts": [
             "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
             "qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf",
         ],
+        "part_sizes": [3993201344, 689872288],
     },
 }
 
