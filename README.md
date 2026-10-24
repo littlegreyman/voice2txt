@@ -287,7 +287,7 @@ models_dir: /path/to/my_models   # 模型随程序一起带走，彻底离线可
 - `iic/SenseVoiceSmall` → commit `7bf452403abd7353a300cd760f7adae7701c92c1`
 - 辅助模型（fsmn-vad / ct-punc / cam++ / paraformer-zh）暂钉 `master` 分支
 - `Qwen/Qwen2.5-3B-Instruct-GGUF`（纪要轻量模型，`qwen2.5-3b-instruct-q4_k_m.gguf`）→ commit `7dabda4d13d513e3e842b20f0d435c732f172cbe`
-- `Qwen/Qwen2.5-7B-Instruct-GGUF`（纪要比默认模型，`qwen2.5-7b-instruct-q4_k_m.gguf`）→ 暂钉 `main` 分支（GGUF 仓库单提交上传；生产建议钉到可验证 commit，见 `setup --engine brief` 日志）
+- `Qwen/Qwen2.5-7B-Instruct-GGUF`（纪要比默认模型，7B Q4_K_M 约 4.7GB；上游以 2 个 GGUF 分片发布：`qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf` + `...-00002-of-00002.gguf`）→ 钉 commit `bb5d59e06d9551d752d08b292a50eb208b07ab1f`（loader 指向首个分片，llama-cpp 自动读取同目录兄弟分片）
 
 whisper 下载额外通过 `allow_patterns` 仅拉取推理必需文件。`MODEL_PINS` 的哈希改版时需人工
 复核与上游一致再更新。
