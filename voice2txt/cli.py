@@ -84,8 +84,8 @@ def transcribe_cmd(input_path: str, settings: Settings) -> None:
     else:
         sys.stdout.write(text)
 
-    # 会议纪要总结：仅 -f txt + --brief。写入 [同名].brief.md（Markdown，与输出同 stem，UTF-8 无 BOM，
-    # 可直接在 VS Code / Obsidian 等预览；.brief 段保留原纪要标识）。
+    # 会议纪要总结：仅 -f txt + --brief。写入 [同名].brief.md（Markdown，与输出同 stem，UTF-8 带 BOM，
+    # 与 TXT 一致，Windows 记事本不乱码；可直接在 VS Code / Obsidian 等预览）。
     if settings.brief:
         from .core.summarizer import Summarizer
 
@@ -106,7 +106,7 @@ def transcribe_cmd(input_path: str, settings: Settings) -> None:
                     on_progress=lambda m: print(f"[brief] {m}", flush=True),
                 )
                 brief_path.parent.mkdir(parents=True, exist_ok=True)
-                brief_path.write_text(brief, encoding="utf-8")
+                brief_path.write_text(brief, encoding="utf-8-sig")
                 print(f"[ok] 已写出会议纪要 {brief_path}（{len(brief)} 字）")
         except Exception as e:  # 纪要失败不应影响主产物 TXT
             print(f"[warn] 会议纪要生成失败（已跳过）：{e}")
@@ -182,7 +182,7 @@ def main(argv: Optional[list] = None) -> int:
             "  voice2txt transcribe recording.m4a -e whisper -f txt\n"
             "\n"
             "说明：\n"
-            "  - 输出文件带 UTF-8 BOM（Windows 记事本不乱码）；纪要 .brief.md 为 UTF-8 无 BOM。\n"
+            "  - 输出文件与纪要 .brief.md 均为 UTF-8 带 BOM（Windows 记事本不乱码）。\n"
             "  - --brief 仅对 -f txt 生效；与 -f srt 一起会报错提示。\n"
             "  - 运行时强制离线；若提示模型缺失，先 `voice2txt setup` 联网下载一次。"
         ),
