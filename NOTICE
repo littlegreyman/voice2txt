@@ -1,0 +1,64 @@
+voice2txt
+Copyright 2026 voice2txt contributors
+
+This product includes software and model weights developed by third parties.
+All third-party components are used under their respective open-source licenses.
+This product is NOT affiliated with or endorsed by the upstream projects below.
+
+=== 第三方组件与模型 ===
+
+[1] FunASR / SenseVoice / Paraformer / CAM++ / FSMN-VAD / CT-PUNC
+    © ModelScope / Tongyi Lab (阿里巴巴达摩院)
+    来源: ModelScope (https://modelscope.cn)
+    许可: Apache-2.0 (代码) / 各模型卡模型许可（商用需署名，详见 ModelScope 模型卡）
+    用途: 中文/多语种 ASR、VAD、标点恢复、说话人分离
+    注意: 模型权重非本仓库所有；如分发本程序，请同时保留本 NOTICE 与上游署名。
+
+[2] faster-whisper
+    © SYSTRAN (https://github.com/SYSTRAN/faster-whisper)
+    许可: MIT
+    用途: Whisper 推理引擎（CTranslate2）
+
+[3] OpenAI Whisper large-v3 权重
+    © OpenAI (https://github.com/openai/whisper)
+    来源: SYSTRAN/faster-whisper-large-v3 (HuggingFace)
+    许可: MIT (代码) / MIT (权重)
+    用途: 多语种语音识别（方案 A 备选引擎）
+
+[4] CTranslate2
+    © OpenNMT (https://github.com/OpenNMT/CTranslate2)
+    许可: MIT
+    用途: faster-whisper 推理后端
+
+[5] PyAV / av
+    © PyAV contributors (https://github.com/PyAV-Org/PyAV)
+    许可: BSD-3-Clause
+    用途: 音频解码（自带 ffmpeg 库，无需系统 ffmpeg）
+
+[6] soundfile / libsndfile
+    许可: BSD-3-Clause (soundfile) / LGPL-2.1 (libsndfile)
+    用途: wav 读写
+
+[7] NumPy
+    许可: BSD-3-Clause
+
+[8] PyTorch / TorchAudio
+    © Meta Platforms, Inc.
+    许可: BSD-3-Clause
+    用途: 底层推理张量运算
+
+[9] Qwen2.5-3B-Instruct (GGUF, Q4_K_M)
+    © 阿里巴巴达摩院 (Alibaba Qwen Team)
+    来源: HuggingFace (Qwen/Qwen2.5-3B-Instruct-GGUF)
+    许可: Apache-2.0
+    用途: 会议纪要总结（本地 llama-cpp-python 后端，--brief 功能）
+
+[10] llama-cpp-python
+    © Aleksandar B. (abetlen) 及贡献者 (https://github.com/abetlen/llama-cpp-python)
+    许可: MIT
+    用途: 本地加载并推理 GGUF 权重（纪要总结后端，不依赖联网）
+
+=== 合规提示 ===
+- 本程序代码以 Apache-2.0 发布；若您修改了源码文件，请按 Apache-2.0 第 4(b) 条标明改动。
+- 若随程序分发模型权重，请遵守各模型卡的具体许可（多数要求署名，部分限制商用场景）。
+- 不得移除上述署名与 NOTICE。

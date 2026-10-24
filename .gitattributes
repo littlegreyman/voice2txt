@@ -1,0 +1,8 @@
+# 统一换行符，避免 Windows 贡献者引入 CRLF 污染
+* text=auto eol=lf
+
+# 二进制资源保持原样（如有）
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.wav binary

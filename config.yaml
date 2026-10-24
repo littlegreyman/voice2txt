@@ -1,0 +1,12 @@
+# voice2txt 默认配置（CLI 参数可覆盖）
+engine: funasr            # funasr(方案B,默认) | whisper(方案A,备选)
+device: auto              # auto | cuda | cuda:0 | cpu
+vram: auto                # auto | aggressive | balanced | conservative
+diarize: true             # 是否区分说话人（false 提速）
+format: srt               # srt | txt
+language: auto            # auto | zh | en | ja | ko | yue | ...
+asr_model: auto           # auto(按引擎默认) | iic/SenseVoiceSmall | paraformer-zh | large-v3 ...
+speaker_labels: true      # 输出是否带 [SPEAKER_xx] 前缀
+batch_size_s: 300         # FunASR 分块秒数（长音频）
+max_speakers: null        # 已知说话人数（可选，提升稳定）
+models_dir: null          # 模型缓存目录（默认 ~/.cache/voice2txt/models）

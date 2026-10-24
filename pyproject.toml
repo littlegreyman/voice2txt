@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voice2txt"
+version = "0.1.0"
+description = "纯本地离线 CLI：会议/手机录音转写 SRT 或纯文本，支持可选说话人分离与中英混合"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"  # FunASR 依赖链(editdistance/jieba)无 3.13 wheel
+license = { text = "Apache-2.0" }
+authors = [{ name = "voice2txt" }]
+keywords = ["asr", "whisper", "funasr", "diarization", "offline", "srt", "transcription"]
+
+dependencies = [
+    "funasr>=1.0",
+    "modelscope>=1.15",
+    "torch>=2.2",
+    "torchaudio>=2.2",
+    "faster-whisper>=1.0",
+    "ctranslate2>=4.0",
+    "av>=11.0",
+    "soundfile>=0.12",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+serve = ["fastapi>=0.110", "uvicorn>=0.29"]
+gui = ["textual>=0.60"]
+brief = ["llama-cpp-python>=0.3"]   # 会议纪要总结（Qwen2.5-3B GGUF 本地后端）
+dev = ["pytest>=8.0", "pyinstaller>=6.0"]
+
+[project.scripts]
+voice2txt = "voice2txt.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["voice2txt*"]

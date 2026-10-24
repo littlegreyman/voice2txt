@@ -1,0 +1,43 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---- 虚拟环境 ----
+.venv/
+venv/
+env/
+
+# ---- 模型权重（来自 hub，体积大，绝不入仓）----
+models/
+
+# ---- 日志与安装产物（含本机路径，禁止入仓）----
+*.log
+*.log.*
+get-pip.py
+
+# ---- 本地测试 / 验证产物 ----
+out.srt
+whisper_out.txt
+*.brief
+*.brief.md
+1023meeting.txt
+*.wav
+*.wav.tmp
+
+# ---- 内部 agent 记忆（含本机路径，绝不入仓）----
+.workbuddy/
+
+# ---- 本地配置覆盖 ----
+config.local.yaml
+
+# ---- 编辑器 ----
+.vscode/

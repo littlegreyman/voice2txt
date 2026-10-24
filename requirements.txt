@@ -1,0 +1,28 @@
+# voice2txt 运行依赖
+#
+# 注意：
+# 1) Python 版本需为 3.10 ~ 3.12。FunASR 依赖链（editdistance、jieba 等）
+#    在 3.13 无预编译 wheel，3.13 安装会失败，请勿使用。
+# 2) 默认 `pip install` 安装的是 CPU 版 PyTorch。要启用 GPU 加速，请改为从
+#    PyTorch 官方源安装（版本号按你的 CUDA 调整，例如 cu126）：
+#      pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126
+# 3) macOS（Apple Silicon）用默认 PyPI 即可，自动走 MPS，无需 CUDA 源。
+# 4) 以 pyproject.toml 为准；本文件仅作离线/参考等价清单。
+
+funasr>=1.0
+modelscope>=1.15
+torch>=2.2
+torchaudio>=2.2
+faster-whisper>=1.0
+ctranslate2>=4.0
+av>=11.0
+soundfile>=0.12
+numpy>=1.24
+pyyaml>=6.0
+
+# 可选扩展（等价于 pyproject [project.optional-dependencies]）
+# fastapi>=0.110
+# uvicorn>=0.29
+# textual>=0.60
+# pytest>=8.0
+# pyinstaller>=6.0
