@@ -17,7 +17,10 @@ venv/
 env/
 
 # ---- 模型权重（来自 hub，体积大，绝不入仓）----
-models/
+# 仅按扩展名排除权重文件；源码包 voice2txt/models/ 必须入仓（否则 clone 后 import 失败）。
+# 权重默认落在 ~/.cache 或 models_dir（均在仓库外），不会进仓。
+*.gguf
+*.safetensors
 
 # ---- 日志与安装产物（含本机路径，禁止入仓）----
 *.log
