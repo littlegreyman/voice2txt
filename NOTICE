@@ -47,9 +47,9 @@ This product is NOT affiliated with or endorsed by the upstream projects below.
     许可: BSD-3-Clause
     用途: 底层推理张量运算
 
-[9] Qwen2.5-3B-Instruct (GGUF, Q4_K_M)
+[9] Qwen2.5-3B-Instruct / Qwen2.5-7B-Instruct (GGUF, Q4_K_M；默认 7B，可选 3B)
     © 阿里巴巴达摩院 (Alibaba Qwen Team)
-    来源: HuggingFace (Qwen/Qwen2.5-3B-Instruct-GGUF)
+    来源: HuggingFace (Qwen/Qwen2.5-7B-Instruct-GGUF 默认；Qwen/Qwen2.5-3B-Instruct-GGUF 可选)
     许可: Apache-2.0
     用途: 会议纪要总结（本地 llama-cpp-python 后端，--brief 功能）
 

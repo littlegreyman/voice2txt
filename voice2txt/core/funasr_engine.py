@@ -98,12 +98,20 @@ class FunASREngine(Engine):
                    language: Optional[str], vram) -> TranscribeResult:
         model = self._ensure(diarize, vram)
         lang = language or "auto"
-        res = model.generate(
+        gen = dict(
             input=audio_path,
             language=lang,
             use_itn=True,
             batch_size_s=self.s.batch_size_s,
         )
+        # 精度杠杆（以效率为代价）：
+        # - beam_size>1：更大解码 beam，词错率↓、速度↓（SenseVoice 默认 1）
+        # - hotword：上下文偏置，显著提升专有名词 / 人名识别（空格分隔）
+        if self.s.beam_size and self.s.beam_size > 1:
+            gen["beam_size"] = self.s.beam_size
+        if self.s.hotword:
+            gen["hotword"] = self.s.hotword
+        res = model.generate(**gen)
         data = res[0] if res else {}
         utts: List[Utterance] = []
         info = data.get("sentence_info")

@@ -11,7 +11,7 @@
 | 说话人分离 | 默认开启，可选 `[SPEAKER_00]` 标签；`--no-diarize` 关闭提速 |
 | 中英混合 | 保留原文混合，不翻译改写 |
 | 输出格式 | SRT 字幕 / TXT 文本（UTF-8 with BOM，Windows 记事本不乱码） |
-| 会议纪要 | TXT 输出可加 `--brief`，本地 LLM（Qwen2.5-3B GGUF）自动整理为结构化 `.brief.md` 纪要 |
+| 会议纪要 | TXT 输出可加 `--brief`，本地 LLM（默认 Qwen2.5-7B GGUF）自动整理为结构化 `.brief.md` 纪要 |
 | 长音频 | 按 `batch_size_s` 自动分块（设计支持长录音，建议先用样本实测） |
 | 显存自适应 | 爆显存自动降级：fp16 → int8_float16 → int8 → CPU |
 | 多平台 | Windows / Ubuntu / macOS 一致运行（GPU：CUDA / MPS；无 GPU 走 CPU） |
@@ -89,7 +89,7 @@ voice2txt transcribe 会议录音.mp3 -f srt -o 会议录音.srt
 voice2txt setup                 # 下载全部引擎模型（FunASR + whisper）
 voice2txt setup --engine funasr # 只下 FunASR（默认引擎）
 voice2txt setup --engine whisper# 只下 whisper 备选引擎
-voice2txt setup --engine brief  # 只下纪要总结模型 Qwen2.5-3B-Instruct GGUF（可选，--brief 才需要）
+voice2txt setup --engine brief  # 只下纪要总结模型 Qwen2.5-7B-Instruct GGUF（可选，--brief 才需要）
 ```
 
 - 国内网络若 HuggingFace 主站不可达，会自动走 `hf-mirror.com` 镜像并关闭 Xet，无需手动设环境变量。
@@ -129,6 +129,9 @@ voice2txt transcribe call.mp3 -l zh -f srt -o call.srt
 | `-o, --output` | 输出文件路径；不填则打印到终端 | 终端 |
 | `--brief` | 仅 `-f txt` 生效：额外生成结构化会议纪要 `[同名].brief.md` | 关 |
 | `--asr-model` | 覆盖 ASR 模型 id | 引擎默认 |
+| `--beam-size` | SenseVoice 解码 beam；调大(5~10)提升词准确率，更慢 | `1` |
+| `--hotword` | 上下文偏置热词（空格分隔），提升专有名词/人名准确率 | — |
+| `--brief-model` | 纪要 LLM 规模：`7b`（默认，质量高）/ `3b`（轻量更快） | `7b` |
 | `--offline` | 强制离线（现已是默认行为，保留用于显式声明） | — |
 
 > `-o` 输出文件带 **UTF-8 BOM**，Windows 记事本 / 播放器直接打开中文不乱码。
@@ -157,6 +160,24 @@ voice2txt transcribe call.mp3 -l zh -f srt -o call.srt
 按 `batch_size_s`（默认 300 秒）自动分块处理，设计上支持长录音。
 极长文件（如 1~2 小时）建议先用自己的样本实测一次耗时与显存。
 
+### 提升转写准确率（精度优先）
+
+默认配置偏向速度。若更看重词准确率、能接受更慢，可用以下杠杆（可叠加）：
+
+- **加大解码 beam**：`--beam-size 8`（5~10 均可）。SenseVoice 默认 1，越大词错率越低、越慢。
+  ```bash
+  voice2txt transcribe 会议.mp3 -f txt --beam-size 8 -o 会议.txt
+  ```
+- **上下文偏置热词**：`--hotword "张三 项目A 第二季度"`。把会议里的专有名词 / 人名喂给模型做偏置，
+  能显著降低这类词的错误（尤其生僻人名、产品代号）。
+- **指定语种**：中文会议加 `-l zh`、粤语 `-l yue`，避免 `auto` 误检语种导致质量下降。
+- **高质量音源**：程序已统一重采样到 16k 单声道（PyAV），无需手动处理；尽量提供清晰录音。
+- **换更强模型（高级）**：纯中文场景可试 `iic/paraformer-zh`（Paraformer-large，准确率常高于 SenseVoice，
+  但更慢、无内置 ITN）；英文 / 强混码用 `--engine whisper`（large-v3）。经 `--asr-model` / `--engine` 切换。
+
+> 经验：中文会议最划算的两步是「`-l zh` + `--hotword '关键人名 术语'`」，几乎零成本显著提准确率；
+> 若仍不满意再上 `--beam-size 8`。
+
 ### 中英混合
 
 默认保留原文混合（不翻译）。FunASR 引擎自带标点恢复（ct-punc），中文标点更自然；
@@ -164,7 +185,7 @@ whisper 备选引擎默认不带中文标点，属引擎特性差异。
 
 ### 会议纪要（`--brief`，仅 TXT）
 
-转写为 **TXT** 时加 `--brief`，会在本地用 **Qwen2.5-3B-Instruct GGUF（Q4_K_M）** 通过
+转写为 **TXT** 时加 `--brief`，会在本地用 **Qwen2.5-7B-Instruct GGUF（Q4_K_M，默认）** 通过
 `llama-cpp-python` 离线把转录整理为结构化中文会议纪要，并写入 **`[同名].brief.md`** 文件
 （与 `-o` 输出同 stem，UTF-8 无 BOM）。整条链路无联网、无 API key。
 
@@ -177,7 +198,9 @@ voice2txt transcribe rec.m4a -f txt --brief
 ```
 
 - 纪要模型需先一次性下载（仅一次、需联网）：`voice2txt setup --engine brief`。
-- 默认模型为 **3B（Q4_K_M，约 2GB）**，在 RTX 4060 上可走 GPU 卸载（`llama-cpp-python`
+- 默认纪要模型已升级为 **7B（Q4_K_M，约 4.7GB）**，质量优于 3B；显存吃紧或只想要快速草稿时，
+  可在 `config.yaml` 设 `brief_model: 3b` 或加 `--brief-model 3b` 退回 **3B（约 2GB）**。
+  7B 在 RTX 4060 上可走 GPU 卸载（`llama-cpp-python`
   若安装的是带 CUDA 的构建）；纯 CPU 构建也能跑，只是稍慢。
   - 安装 `llama-cpp-python`（纪要功能的可选依赖）：**PyPI 上 `llama-cpp-python` 没有 Windows
     预编译 wheel**（只有源码 sdist），直接 `pip install` 会从源码编译，需本机有 C/C++ 工具链
@@ -263,7 +286,8 @@ models_dir: /path/to/my_models   # 模型随程序一起带走，彻底离线可
 - `Systran/faster-whisper-large-v3` → commit `edaa852ec7e145841d8ffdb056a99866b5f0a478`
 - `iic/SenseVoiceSmall` → commit `7bf452403abd7353a300cd760f7adae7701c92c1`
 - 辅助模型（fsmn-vad / ct-punc / cam++ / paraformer-zh）暂钉 `master` 分支
-- `Qwen/Qwen2.5-3B-Instruct-GGUF`（纪要模型，`qwen2.5-3b-instruct-q4_k_m.gguf`）→ commit `7dabda4d13d513e3e842b20f0d435c732f172cbe`
+- `Qwen/Qwen2.5-3B-Instruct-GGUF`（纪要轻量模型，`qwen2.5-3b-instruct-q4_k_m.gguf`）→ commit `7dabda4d13d513e3e842b20f0d435c732f172cbe`
+- `Qwen/Qwen2.5-7B-Instruct-GGUF`（纪要比默认模型，`qwen2.5-7b-instruct-q4_k_m.gguf`）→ 暂钉 `main` 分支（GGUF 仓库单提交上传；生产建议钉到可验证 commit，见 `setup --engine brief` 日志）
 
 whisper 下载额外通过 `allow_patterns` 仅拉取推理必需文件。`MODEL_PINS` 的哈希改版时需人工
 复核与上游一致再更新。
@@ -297,7 +321,7 @@ A：程序会自动降级（fp16→int8_float16→int8→CPU）并重试；也�
 
 **Q7：加了 `--brief` 没生成 `.brief.md` 文件？**
 A：两种常见原因：① `--brief` 只能配合 `-f txt`，与 `-f srt` 一起会报错；② 纪要模型未下载，
-先 `voice2txt setup --engine brief` 联网下载一次（约 2GB）。两者都会给出明确提示而非静默跳过。
+先 `voice2txt setup --engine brief` 联网下载一次（默认 7B 约 4.7GB；`--brief-model 3b` 约 2GB）。两者都会给出明确提示而非静默跳过。
 
 **Q8：`--brief` 纪要用的是 CPU / 生成很慢？**
 A：纪要后端是 llama-cpp-python，只有装了 **CUDA 版** wheel 才会走 GPU。PyPI/默认装到的是 CPU 版，
@@ -306,11 +330,10 @@ A：纪要后端是 llama-cpp-python，只有装了 **CUDA 版** wheel 才会走
 `cuda`，速度可快数十倍。**注意：CPU 只影响速度，不影响纪要质量。**
 
 **Q9：`--brief` 生成的纪要比言无物 / 很空洞？**
-A：空洞主因**不是 CPU**（CPU 只拖慢速度），而是 ① 默认纪要模型是 3B Q4_K_M，规模有限，对长会议
-提炼能力弱；② 早期提示词与生成参数偏保守。本版已优化提示词（强制行动项填全「责任人/时限」，信息密度
-要高）并放宽 `max_tokens`(1536→2048)、降低 `frequency_penalty`(0.3→0.2)。若仍不够，可换更大的纪要
-模型（如 Qwen2.5-7B-Instruct Q4_K_M，RTX 4060 8GB 可显存卸载），质量会明显提升——需要的话可把默认
-模型切到 7B 并补充下载步骤。
+A：空洞主因**不是 CPU**（CPU 只拖慢速度）。本版默认纪要模型已是 **7B Q4_K_M**（质量优于 3B），并优化了
+提示词（强制行动项填全「责任人/时限」、信息密度要高）、放宽 `max_tokens`(1536→2048)、降低
+`frequency_penalty`(0.3→0.2)。若仍不够，想要更快的草稿用 `--brief-model 3b`；想要更强则换更大模型
+（如 Qwen2.5-14B，需更多显存）或继续打磨提示词。
 
 ## 命令速查
 
@@ -335,5 +358,5 @@ A：空洞主因**不是 CPU**（CPU 只拖慢速度），而是 ① 默认纪�
 ## 许可与合规
 
 - 代码本体：**Apache-2.0**（见 `LICENSE`）。
-- 第三方模型与库见 `NOTICE`（FunASR 系列、faster-whisper、Whisper 权重、PyAV、PyTorch、Qwen2.5-3B、llama-cpp-python 等）。
+- 第三方模型与库见 `NOTICE`（FunASR 系列、faster-whisper、Whisper 权重、PyAV、PyTorch、Qwen2.5-3B/7B、llama-cpp-python 等）。
 - 分发时请保留 `LICENSE` 与 `NOTICE` 及上游署名；若修改源码请按 Apache-2.0 第 4(b) 条标明。

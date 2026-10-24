@@ -203,6 +203,12 @@ def main(argv: Optional[list] = None) -> int:
                       help="输出不带 [SPEAKER_xx] 前缀（仍做分离，仅不打印标签）")
     p_tr.add_argument("--offline", action="store_true", help="强制离线（现已是默认行为，保留用于显式声明）")
     p_tr.add_argument("--asr-model", help="覆盖 ASR 模型 id（高级，默认按引擎自动选）")
+    p_tr.add_argument("--beam-size", type=int, default=None,
+                      help="SenseVoice 解码 beam（默认 1）；调大(5~10)可提升词准确率，但更慢")
+    p_tr.add_argument("--hotword", default=None,
+                      help="上下文偏置热词（空格分隔），提升专有名词/人名准确率，如 '张三 项目A'")
+    p_tr.add_argument("--brief-model", choices=["3b", "7b"], default=None,
+                      help="纪要 LLM 规模：7b（默认，质量高）/ 3b（轻量更快）")
 
     p_setup = sub.add_parser(
         "setup",
@@ -217,7 +223,7 @@ def main(argv: Optional[list] = None) -> int:
             "  # 下载全部模型（funasr + whisper 备选 + 纪要 LLM）\n"
             "  voice2txt setup\n"
             "\n"
-            "  # 仅下载会议纪要用的本地 LLM（Qwen2.5-3B GGUF）\n"
+            "  # 仅下载会议纪要用的本地 LLM（默认 Qwen2.5-7B GGUF；--brief-model 3b 可选 3B）\n"
             "  voice2txt setup --engine brief\n"
             "\n"
             "  # 仅下载 whisper 备选引擎（国内网络自动走镜像，关 Xet）\n"
@@ -265,6 +271,12 @@ def main(argv: Optional[list] = None) -> int:
         settings.vram = args.vram
     if args.asr_model:
         settings.asr_model = args.asr_model
+    if args.beam_size is not None:
+        settings.beam_size = args.beam_size
+    if args.hotword:
+        settings.hotword = args.hotword
+    if args.brief_model:
+        settings.brief_model = args.brief_model
     settings.diarize = not args.no_diarize
     settings.speaker_labels = not args.no_speaker_labels
     if args.offline:

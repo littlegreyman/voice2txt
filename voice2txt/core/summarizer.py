@@ -1,4 +1,5 @@
-"""会议纪要总结：本地 llama-cpp-python 后端，加载 Qwen2.5-3B-Instruct GGUF。
+"""会议纪要总结：本地 llama-cpp-python 后端，默认加载 Qwen2.5-7B-Instruct GGUF（Q4_K_M）；
+可经 settings.brief_model='3b' 退回轻量 Qwen2.5-3B-Instruct GGUF（更快、占显存小）。
 
 仅对 TXT 输出生效。输出写入 [同名].brief.md 文件（Markdown，见 cli.py）。
 完全离线：模型在 `voice2txt setup --engine brief` 阶段一次性下载到本地。

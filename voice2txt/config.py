@@ -25,6 +25,9 @@ class Settings:
     models_dir: Optional[str] = None
     offline: bool = False
     brief: bool = False              # 是否生成会议纪要 [同名].brief.md（仅 -f txt）
+    brief_model: str = "7b"          # 纪要 LLM：7b（默认，质量高）/ 3b（轻量，更快）
+    beam_size: int = 1               # SenseVoice 解码 beam；>1 提升准确率（更慢）
+    hotword: Optional[str] = None    # 上下文偏置热词（空格分隔），提升专有名词/人名准确率
     output: Optional[str] = None      # 输出文件路径；None 则打印到 stdout
 
     def resolved_asr_model(self) -> str:

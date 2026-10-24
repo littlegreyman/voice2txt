@@ -28,7 +28,7 @@ dependencies = [
 [project.optional-dependencies]
 serve = ["fastapi>=0.110", "uvicorn>=0.29"]
 gui = ["textual>=0.60"]
-brief = ["llama-cpp-python>=0.3"]   # 会议纪要总结（Qwen2.5-3B GGUF 本地后端）
+brief = ["llama-cpp-python>=0.3"]   # 会议纪要总结（Qwen2.5 GGUF 本地后端，默认 7B / 可选 3B）
 dev = ["pytest>=8.0", "pyinstaller>=6.0"]
 
 [project.scripts]
